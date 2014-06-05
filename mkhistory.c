@@ -78,12 +78,15 @@ void pdf2pngstamp(char *pdf_filename, char *png_filename, char *stamp) {
 	exit_if_cairo_status_not_success(cr, __FILE__, __LINE__);
 
 	// render
+	cairo_save(cr);
 	poppler_page_render(page, cr);
 	cairo_set_operator(cr, CAIRO_OPERATOR_DEST_OVER);
 	cairo_set_source_rgb(cr, 1, 1, 1);
 	cairo_paint(cr);
+	cairo_restore(cr);
 
 	// stamp
+	cairo_set_font_size(cr, 80);
 	cairo_text_extents_t text_extent;
 	cairo_text_extents(cr, stamp, &text_extent);
 
@@ -91,8 +94,6 @@ void pdf2pngstamp(char *pdf_filename, char *png_filename, char *stamp) {
 	double versiony = height - text_extent.height;
 	cairo_move_to(cr, versionx, versiony);
 	cairo_show_text(cr, stamp);
-	cairo_set_line_width(cr,1);
-	cairo_rectangle(cr, versionx-5, versiony+5, text_extent.width+11, -text_extent.height-9);
 	cairo_stroke(cr);
 
 	// save the png

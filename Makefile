@@ -9,6 +9,7 @@ PDFS = $(VERSIONS:=.pdf)
 
 all: mksingle mkhistory $(PDFS)
 	./mkhistory
+	rm -f history.mp4
 	ffmpeg -r 1 -i %03d.png -r 30 history.mp4
 	vlc history.mp4
 
