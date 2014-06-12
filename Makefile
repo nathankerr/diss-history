@@ -17,12 +17,14 @@ endif
 VERSIONS := $(shell $(GIT) log --format=%H)
 PDFS = $(VERSIONS:=.pdf)
 
-all: mksingle mkhistory $(PDFS)
-	#$(GIT) checkout -f master
-	#./mkhistory
+all: history.mkv
+	$(MOVIEPLAYER) history.mkv
+
+history.mkv: mkhistory $(PDFS)
+	$(GIT) checkout -f master
+	./mkhistory
 	rm -f history.mkv
 	./ffmpeg -r 3 -i %03d.png -r 30 history.mkv
-	$(MOVIEPLAYER) history.avi
 
 %.pdf:
 	echo making version $*
@@ -56,13 +58,6 @@ ee9a47918ea5fb4d6a27e23f68732e8ad921ea11.pdf:
 
 .PHONY: 9e040916e59c35a419d9cf5c645160acd903cf11.pdf
 9e040916e59c35a419d9cf5c645160acd903cf11.pdf:
-
-# did not want to compile
-# .PHONY: 9a12d2d8d0969fe009c3e317296d2f47afc358ab.pdf
-# 9a12d2d8d0969fe009c3e317296d2f47afc358ab.pdf:
-
-%-single.pdf: %.pdf
-	./mksingle $< $@
 
 clean:
 	# rm -rf *.pdf
