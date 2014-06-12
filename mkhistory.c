@@ -6,12 +6,48 @@
 #include <cairo.h>
 #include <poppler.h>
 
+const char* revs_to_skip[] = {
+	// prep for merge
+	"e88f24be65434de3747e4f39360432433549d6f5",
+	"3619d313aecbd0200a9422aeb4b776e75bc9e722",
+	// lyx based stuff
+	"2fb177d1fcb0f0c85de0ada996c1b7f3493203c6",
+	"3aa5728a9e98fd78bf01593e715b4e74ccf96a6e",
+	"ee9a47918ea5fb4d6a27e23f68732e8ad921ea11",
+	"9e040916e59c35a419d9cf5c645160acd903cf11",
+	// other problems
+};
+int nrevs_to_skip = sizeof(revs_to_skip)/sizeof(revs_to_skip[0]);
+git_oid **oids_to_skip;
+
 void handle_git_error(int err) {
 	if (err < 0) {
 		const git_error *e = giterr_last();
 		printf("Error %d/%d: %s\n", err, e->klass, e->message);
 		exit(err);
 	}
+}
+
+void setup_oids_to_skip() {
+	oids_to_skip = malloc(sizeof(git_oid*)*nrevs_to_skip);
+	int i;
+	int err;
+	for (i = 0; i < nrevs_to_skip; i++) {
+		git_oid *oid = malloc(sizeof(git_oid));
+		err = git_oid_fromstr(oid, revs_to_skip[i]);
+		handle_git_error(err);
+
+		oids_to_skip[i] = oid;
+	}
+}
+
+int should_skip(git_oid *oid) {
+	for (int i = 0; i < nrevs_to_skip; i++) {
+		if (git_oid_equal(oid, oids_to_skip[i])) {
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 void exit_if_cairo_surface_status_not_success(cairo_surface_t* surface, char* file, int line) {
@@ -144,7 +180,7 @@ void pdf2pngstamp(char *pdf_filename, char *png_filename, char *stamp, int max_p
 		
 		// FIXME: at times this free would seg. fault.
 		// commenting it out causes memory to leak
-		// g_object_unref(page);
+		g_object_unref(page);
 	}
 	cairo_restore(cr);
 
@@ -185,6 +221,7 @@ void pdf2pngstamp(char *pdf_filename, char *png_filename, char *stamp, int max_p
 
 int main(int argc, char** argv) {
 	const char* repo_dirname = "dissertation";
+	setup_oids_to_skip();
 
 	// open repo
 	git_repository *repo;
@@ -198,11 +235,16 @@ int main(int argc, char** argv) {
 	git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL|GIT_SORT_REVERSE);
 
 	// find the max page count
-	err = git_revwalk_push_range(walk, "7af0f9..HEAD");
+	// err = git_revwalk_push_range(walk, "7af0f9..HEAD");
+	err = git_revwalk_push_head(walk);
 	handle_git_error(err);
+	// push_revs_to_skip(walk);
 	int max_page_count = 0;
 	git_oid oid;
 	while (git_revwalk_next(&oid, walk) != GIT_ITEROVER) {
+		if (should_skip(&oid)) {
+			continue;
+		}
 		char oid_str[41];
 		git_oid_fmt(oid_str, &oid);
 		oid_str[40] = '\0';
@@ -213,7 +255,7 @@ int main(int argc, char** argv) {
 		GError *error = NULL;
 		PopplerDocument *document = open_document(pdf_filename, &error);
 		if (document == NULL) {
-			printf("%s:%d: %s\n", __FILE__, __LINE__, error->message);
+			printf("%s:%d: %s: %s\n", __FILE__, __LINE__, error->message, pdf_filename);
 			exit(1);
 		}
 
@@ -233,13 +275,19 @@ int main(int argc, char** argv) {
 	err = git_revwalk_new(&walk, repo);
 	handle_git_error(err);
 	git_revwalk_sorting(walk, GIT_SORT_TOPOLOGICAL|GIT_SORT_REVERSE);
-	err = git_revwalk_push_range(walk, "7af0f9..HEAD");
+	// err = git_revwalk_push_range(walk, "7af0f9..HEAD");
+	err = git_revwalk_push_head(walk);
 	handle_git_error(err);
+	// push_revs_to_skip(walk);
 
 	int n = 0;
 	git_checkout_options opts = GIT_CHECKOUT_OPTIONS_INIT;
 	opts.checkout_strategy = GIT_CHECKOUT_FORCE;
 	while (git_revwalk_next(&oid, walk) != GIT_ITEROVER) {
+		if (should_skip(&oid)) {
+			continue;
+		}
+
 		char oid_str[41];
 		git_oid_fmt(oid_str, &oid);
 		oid_str[40] = '\0';
