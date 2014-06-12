@@ -27,13 +27,13 @@ all: mksingle mkhistory $(PDFS)
 %.pdf:
 	echo making version $*
 	$(GIT) checkout -f $*
-	# cd $(REPO); $(MAKE) paper.pdf
-	# mv $(REPO)/paper.pdf $*.pdf
+	cd $(REPO); $(MAKE) paper.pdf
+	mv $(REPO)/paper.pdf $*.pdf
 	# rmdir $(REPO)/prototype
 	# cd $(REPO); ln -s ../prototype
 	# cd $(REPO); echo "%\c" > prototype.tex.new && cat prototype.tex >> prototype.tex.new && mv prototype.tex.new prototype.tex
-	cd $(REPO); $(MAKE) full.pdf
-	mv $(REPO)/full.pdf $*.pdf
+	#cd $(REPO); $(MAKE) full.pdf
+	#mv $(REPO)/full.pdf $*.pdf
 	cd $(REPO); $(MAKE) clean
 	$(GIT) checkout -f master
 
